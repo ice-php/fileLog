@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+
 namespace icePHP;
 
 /**
@@ -76,7 +77,49 @@ final class FileLog
         $this->makeDir(dirname($path));
 
         // 写入文件
-        return file_put_contents($path, $msg, FILE_APPEND | LOCK_EX);
+        return $this->writeFile($path, $msg, FILE_APPEND | LOCK_EX);
+    }
+
+    /**
+     * 对file_put_contents的封装,以修正文件所有者
+     * @param $file string 文件名
+     * @param $content string 文件内容
+     * @param int $flag FILE_APPEND&|LOCK_EX
+     * @return false|int
+     */
+    private function writeFile(string $file, $content, int $flag = 0)
+    {
+        //当前用户
+        $current = getenv('USERNAME') ?: getenv('USER');
+
+        //应该是这个用户
+        $should = Config::get('system', 'OS_USER');
+
+        //如果操作系统是Windows或当前已经是应该的用户,则不处理
+        if (isWindows() or $current === $should) {
+            return file_put_contents($file, $content, $flag);
+        }
+
+        //提前调整文件所有者
+        if (function_exists('posix_getpwuid') && is_file($file)) {
+            $owner = posix_getpwuid(fileowner($file));
+            if ($owner !== $should) {
+                chown($file, $should);
+            }
+        }
+
+        //写入文件
+        $ret = file_put_contents($file, $content, $flag);
+
+        if (function_exists('posix_getpwuid')) {
+            //延后调整文件所有者
+            $owner = posix_getpwuid(fileowner($file));
+            if ($owner !== $should) {
+                chown($file, $should);
+            }
+        }
+
+        return $ret;
     }
 
     /**
@@ -228,7 +271,7 @@ final class FileLog
     {
         //查看是否存在SQL日志配置
         Config::get('log', 'sql', $name) ? $this->log(Config::get('log', 'sql', $name),
-            $name . "\t" . intval($this->logRequestId) . "\t".'<SQL>' . $sql.'</SQL>'
+            $name . "\t" . intval($this->logRequestId) . "\t" . '<SQL>' . $sql . '</SQL>'
         ) : null;
     }
 
@@ -258,7 +301,7 @@ final class FileLog
         $sql = str_replace(["\n", "\t", "  "], ' ', $sql);
 
         //记录日志
-        $this->log($config[$name], $op . "\t" . intval($this->logRequestId) . "\t" . $time . "\t".'<SQL>' . $sql . '</SQL>'."\t".'<RESULT>' . json($data).'</RESULT>');
+        $this->log($config[$name], $op . "\t" . intval($this->logRequestId) . "\t" . $time . "\t" . '<SQL>' . $sql . '</SQL>' . "\t" . '<RESULT>' . json($data) . '</RESULT>');
     }
 
     /**
