@@ -1,16 +1,16 @@
 {
-  "name": "ice-php/fileLog",
+  "name": "ice-php/filelog",
   "description": "记录文本日志",
   "keywords": [
     "icePHP",
     "file",
     "log"
   ],
-  "homepage": "https://github.com/ice-php/fileLog",
+  "homepage": "https://github.com/ice-php/filelog",
   "type": "composer",
   "license": "MIT",
   "support": {
-    "source": "https://github.com/ice-php/fileLog"
+    "source": "https://github.com/ice-php/filelog"
   },
   "authors": [
     {
