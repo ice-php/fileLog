@@ -343,7 +343,7 @@ final class FileLog
         mkdir($path, 0777);
 
         //Windows系统,不进行后续处理
-        if ($this->isWindows()) {
+        if (isWindows()) {
             return;
         }
 
@@ -360,23 +360,5 @@ final class FileLog
 
         //修改所有者为www(应该的用户)
         chown($path, $should);
-    }
-
-    /**
-     * 判断当前操作系统是否Windows
-     * @return bool
-     */
-    private function isWindows(): bool
-    {
-        //获取操作系统
-        $os = getenv('OS');
-
-        //无法取到,通常是Linux
-        if (!$os) {
-            return false;
-        }
-
-        //检查其中是否有Windows字样
-        return strpos(getenv('OS'), 'Windows') !== false;
     }
 }
