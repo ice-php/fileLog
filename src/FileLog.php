@@ -43,7 +43,7 @@ final class FileLog
     public function init(string $dirRoot): void
     {
         //设定日志根目录
-        $this->dirRoot = Config::get('log', 'dir_log') ?: $dirRoot . 'run/log/';
+        $this->dirRoot = config('log', 'dir_log') ?: $dirRoot . 'run/log/';
     }
 
     //用来记录当前请求的表记录ID(可能没有)
@@ -70,11 +70,11 @@ final class FileLog
         // 将文件名中的目录分隔符标准化
         $file = str_replace('\\', '/', $file);
 
-        $dir = rtrim(Config::get('log', 'dir_log') ?: $this->dirRoot . 'run/log/', '/\\') . '/';
+        $dir = rtrim(config('log', 'dir_log') ?: $this->dirRoot . 'run/log/', '/\\') . '/';
 
         // 在日志目录下创建年目录
         $path = $dir . date('Y-m-d') . '/' . $file . '.log';
-        $this->makeDir(dirname($path));
+        makeDir(dirname($path));
 
         // 写入文件
         return write($path, $msg, FILE_APPEND | LOCK_EX);
@@ -91,7 +91,7 @@ final class FileLog
     private function log(string $file, $msg, bool $raw = false)
     {
         // 全局日志开关
-        if (!Config::get('log', 'enable') and !$this->isConfigDebug) {
+        if (!config('log', 'enable') and !$this->isConfigDebug) {
             return false;
         }
 
@@ -130,7 +130,7 @@ final class FileLog
      */
     public function exception(\Exception $e): void
     {
-        $this->log(Config::get('log', 'exception') ?: 'exception', dump($_REQUEST, 'REQUEST', true) . PHP_EOL . var_export($e, true));
+        $this->log(config('log', 'exception') ?: 'exception', dump($_REQUEST, 'REQUEST', true) . PHP_EOL . var_export($e, true));
     }
 
     /**
@@ -139,7 +139,7 @@ final class FileLog
      */
     public function mca(array $req): void
     {
-        $this->log(Config::get('log', 'mca') ?: 'mca', $req);
+        $this->log(config('log', 'mca') ?: 'mca', $req);
     }
 
     /**
@@ -149,12 +149,12 @@ final class FileLog
     public function dispatch(float $time): void
     {
         //是否记录派发日志
-        if (!Config::get('log', 'dispatch')) {
+        if (!config('log', 'dispatch')) {
             return;
         }
 
         // 如果用时少于下限,则不记录
-        $limit = Config::get('log', 'dispatch', 'limit');
+        $limit = config('log', 'dispatch', 'limit');
         if ($limit and $time < $limit) {
             return;
         }
@@ -163,7 +163,7 @@ final class FileLog
         $request = json_encode($_REQUEST, JSON_UNESCAPED_UNICODE);
 
         // 写入日志
-        $this->log(Config::get('log', 'dispatch', 'file'), $time . "\t" . $request . PHP_EOL);
+        $this->log(config('log', 'dispatch', 'file'), $time . "\t" . $request . PHP_EOL);
     }
 
     /**
@@ -173,7 +173,7 @@ final class FileLog
     public function antiLight(array $req): void
     {
         $this->isConfigDebug ? print('anti light') : null;
-        $this->log(Config::get('log', 'anti', 'light') ?: 'anti/light', $req);
+        $this->log(config('log', 'anti', 'light') ?: 'anti/light', $req);
     }
 
     /**
@@ -183,7 +183,7 @@ final class FileLog
     public function antiHigh(array $req): void
     {
         $this->isConfigDebug ? print('anti high') : null;
-        $this->log(Config::get('log', 'anti', 'high') ?: 'anti/high', $req);
+        $this->log(config('log', 'anti', 'high') ?: 'anti/high', $req);
     }
 
     /**
@@ -193,7 +193,7 @@ final class FileLog
     public function antiName(array $req): void
     {
         $this->isConfigDebug ? print('anti param name') : null;
-        $this->log(Config::get('log', 'anti', 'param_name') ?: 'anti/param_name', $req);
+        $this->log(config('log', 'anti', 'param_name') ?: 'anti/param_name', $req);
     }
 
     /**
@@ -205,7 +205,7 @@ final class FileLog
     public function blackIp(string $rawIp, string $ip, array $req): void
     {
         $this->isConfigDebug ? print('anti black ip') : null;
-        $this->log(Config::get('log', 'anti', 'black_ip') ?: 'anti/blackIp', ['rawIp' => $rawIp, 'ip' => $ip, 'request' => $req]);
+        $this->log(config('log', 'anti', 'black_ip') ?: 'anti/blackIp', ['rawIp' => $rawIp, 'ip' => $ip, 'request' => $req]);
     }
 
     /**
@@ -217,7 +217,7 @@ final class FileLog
     public function flash(string $ip, array $request, array $server): void
     {
         $this->isConfigDebug ? print('anti flash') : null;
-        $this->log(Config::get('log', 'anti', 'flash') ?: 'anti/flash', ['ip' => $ip, 'request' => $request, 'server' => $server]);
+        $this->log(config('log', 'anti', 'flash') ?: 'anti/flash', ['ip' => $ip, 'request' => $request, 'server' => $server]);
     }
 
     /**
@@ -228,7 +228,7 @@ final class FileLog
     public function sqlBefore(string $name, string $sql): void
     {
         //查看是否存在SQL日志配置
-        Config::get('log', 'sql', $name) ? $this->log(Config::get('log', 'sql', $name),
+        config('log', 'sql', $name) ? $this->log(config('log', 'sql', $name),
             $name . "\t" . intval($this->logRequestId) . "\t" . '<SQL>' . $sql . '</SQL>'
         ) : null;
     }
@@ -244,13 +244,13 @@ final class FileLog
     public function sqlAfter(string $name, string $sql, $data, float $time, string $op): void
     {
         //查看是否存在SQL日志配置
-        $config = Config::get('log', 'sql');
+        $config = config('log', 'sql');
         if (!$config) {
             return;
         }
 
         // 如果用时间少于下限,则不记录,注:DELETE不受时间限制
-        $limit = Config::get('log', 'sql', 'limit') ?: 10;
+        $limit = config('log', 'sql', 'limit') ?: 10;
         if ($op != 'DELETE' and $limit and $time < $limit) {
             return;
         }
@@ -271,52 +271,6 @@ final class FileLog
     public function writeLog(string $file, $msg, bool $raw = false): void
     {
         //是否允许记录开发人员日志
-        Config::get('log', 'writeLog') ? $this->log($file, $msg, $raw) : null;
-    }
-
-    /**
-     * 越级创建目录
-     * 全局函数中有此方法, 为减少耦合,在此单独实现
-     * @param $path string 目录名称
-     */
-    private function makeDir(string $path): void
-    {
-        //转换标准路径 分隔符
-        $path = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path);
-
-        //如果已经是目录或文件
-        if (is_dir($path) or is_file($path)) {
-            return;
-        }
-
-        //上一级目录
-        $parent = dirname($path);
-
-        //如果上一级不是目录,则创建上一级
-        if (!is_dir($parent)) {
-            $this->makeDir($parent);
-        }
-
-        //创建当前目录
-        mkdir($path, 0777);
-
-        //Windows系统,不进行后续处理
-        if (isWindows()) {
-            return;
-        }
-
-        //当前用户
-        $current = getenv('USERNAME') ?: getenv('USER');
-
-        //应该是这个用户
-        $should = Config::get('system', 'OS_USER') ?: 'www';
-
-        //如果当前已经是应该的用户,则不处理
-        if ($current === $should) {
-            return;
-        }
-
-        //修改所有者为www(应该的用户)
-        chown($path, $should);
+        config('log', 'writeLog') ? $this->log($file, $msg, $raw) : null;
     }
 }
