@@ -25,7 +25,7 @@ final class FileLog
             $this->isConfigDebug = true;
         }
 
-        $this->dirRoot = configDefault('./', 'log', 'dir_log') ?: './';
+        $this->dirRoot = configDefault('./log/', 'log', 'dir_log');
     }
 
     /**
