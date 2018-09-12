@@ -13,10 +13,14 @@ final class FileLog
     //当前是否配置为调试模式
     private $isConfigDebug = false;
 
+    //日志文件根目录
+    private $dirRoot = '';
+
     //禁止外部实例化
     private function __construct()
     {
         $this->isConfigDebug = Config::isDebug();
+        $this->dirRoot = config('log', 'dir_log') ?: './';
     }
 
     /**
@@ -33,9 +37,6 @@ final class FileLog
         return $instance;
     }
 
-    //日志文件根目录
-    private $dirRoot = './';
-
     /**
      * 初始化日志体系, 设置日志根目录
      * @param $dirRoot string 系统根目录
@@ -43,7 +44,7 @@ final class FileLog
     public function init(string $dirRoot): void
     {
         //设定日志根目录
-        $this->dirRoot = config('log', 'dir_log') ?: $dirRoot . 'run/log/';
+        $this->dirRoot = $dirRoot;
     }
 
     //用来记录当前请求的表记录ID(可能没有)
@@ -70,10 +71,8 @@ final class FileLog
         // 将文件名中的目录分隔符标准化
         $file = str_replace('\\', '/', $file);
 
-        $dir = rtrim(config('log', 'dir_log') ?: $this->dirRoot . 'run/log/', '/\\') . '/';
-
         // 在日志目录下创建年目录
-        $path = $dir . date('Y-m-d') . '/' . $file . '.log';
+        $path = $this->dirRoot . date('Y-m-d') . '/' . $file . '.log';
         makeDir(dirname($path));
 
         // 写入文件
