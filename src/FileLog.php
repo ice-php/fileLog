@@ -19,8 +19,13 @@ final class FileLog
     //禁止外部实例化
     private function __construct()
     {
-        $this->isConfigDebug = Config::isDebug();
-        $this->dirRoot = config('log', 'dir_log') ?: './';
+        try {
+            $this->isConfigDebug = Config::isDebug();
+        } catch (ConfigException $e) {
+            $this->isConfigDebug = true;
+        }
+
+        $this->dirRoot = configDefault('./', 'log', 'dir_log') ?: './';
     }
 
     /**
@@ -90,7 +95,8 @@ final class FileLog
     private function log(string $file, $msg, bool $raw = false)
     {
         // 全局日志开关
-        if (!config('log', 'enable') and !$this->isConfigDebug) {
+        $enable = configDefault(false, 'log', 'enable');
+        if (!$enable and !$this->isConfigDebug) {
             return false;
         }
 
@@ -129,7 +135,10 @@ final class FileLog
      */
     public function exception(\Exception $e): void
     {
-        $this->log(config('log', 'exception') ?: 'exception', dump($_REQUEST, 'REQUEST', true) . PHP_EOL . var_export($e, true));
+        $this->log(
+            configDefault('exception', 'log', 'exception') ?: 'exception',
+            dump($_REQUEST, 'REQUEST', true) . PHP_EOL . var_export($e, true)
+        );
     }
 
     /**
@@ -138,7 +147,7 @@ final class FileLog
      */
     public function mca(array $req): void
     {
-        $this->log(config('log', 'mca') ?: 'mca', $req);
+        $this->log(configDefault('mca', 'log', 'mca') ?: 'mca', $req);
     }
 
     /**
@@ -148,12 +157,12 @@ final class FileLog
     public function dispatch(float $time): void
     {
         //是否记录派发日志
-        if (!config('log', 'dispatch')) {
+        if (!configDefault(false, 'log', 'dispatch')) {
             return;
         }
 
         // 如果用时少于下限,则不记录
-        $limit = config('log', 'dispatch', 'limit');
+        $limit = configDefault(1, 'log', 'dispatch', 'limit');
         if ($limit and $time < $limit) {
             return;
         }
@@ -162,7 +171,7 @@ final class FileLog
         $request = json_encode($_REQUEST, JSON_UNESCAPED_UNICODE);
 
         // 写入日志
-        $this->log(config('log', 'dispatch', 'file'), $time . "\t" . $request . PHP_EOL);
+        $this->log(configDefault('dispatch', 'log', 'dispatch', 'file'), $time . "\t" . $request . PHP_EOL);
     }
 
     /**
@@ -172,7 +181,7 @@ final class FileLog
     public function antiLight(array $req): void
     {
         $this->isConfigDebug ? print('anti light') : null;
-        $this->log(config('log', 'anti', 'light') ?: 'anti/light', $req);
+        $this->log(configDefault('anti/light', 'log', 'anti', 'light'), $req);
     }
 
     /**
@@ -182,7 +191,7 @@ final class FileLog
     public function antiHigh(array $req): void
     {
         $this->isConfigDebug ? print('anti high') : null;
-        $this->log(config('log', 'anti', 'high') ?: 'anti/high', $req);
+        $this->log(configDefault('anti/high', 'log', 'anti', 'high'), $req);
     }
 
     /**
@@ -192,7 +201,7 @@ final class FileLog
     public function antiName(array $req): void
     {
         $this->isConfigDebug ? print('anti param name') : null;
-        $this->log(config('log', 'anti', 'param_name') ?: 'anti/param_name', $req);
+        $this->log(configDefault('anti/param_name', 'log', 'anti', 'param_name'), $req);
     }
 
     /**
@@ -204,7 +213,7 @@ final class FileLog
     public function blackIp(string $rawIp, string $ip, array $req): void
     {
         $this->isConfigDebug ? print('anti black ip') : null;
-        $this->log(config('log', 'anti', 'black_ip') ?: 'anti/blackIp', ['rawIp' => $rawIp, 'ip' => $ip, 'request' => $req]);
+        $this->log(configDefault('anti/blackIp', 'log', 'anti', 'black_ip'), ['rawIp' => $rawIp, 'ip' => $ip, 'request' => $req]);
     }
 
     /**
@@ -216,7 +225,7 @@ final class FileLog
     public function flash(string $ip, array $request, array $server): void
     {
         $this->isConfigDebug ? print('anti flash') : null;
-        $this->log(config('log', 'anti', 'flash') ?: 'anti/flash', ['ip' => $ip, 'request' => $request, 'server' => $server]);
+        $this->log(configDefault('anti/flash', 'log', 'anti', 'flash'), ['ip' => $ip, 'request' => $request, 'server' => $server]);
     }
 
     /**
@@ -227,9 +236,8 @@ final class FileLog
     public function sqlBefore(string $name, string $sql): void
     {
         //查看是否存在SQL日志配置
-        config('log', 'sql', $name) ? $this->log(config('log', 'sql', $name),
-            $name . "\t" . intval($this->logRequestId) . "\t" . '<SQL>' . $sql . '</SQL>'
-        ) : null;
+        $file = configDefault(false, 'log', 'sql', $name);
+        $file ? $this->log($file, $name . "\t" . intval($this->logRequestId) . "\t" . '<SQL>' . $sql . '</SQL>') : null;
     }
 
     /**
@@ -243,13 +251,13 @@ final class FileLog
     public function sqlAfter(string $name, string $sql, $data, float $time, string $op): void
     {
         //查看是否存在SQL日志配置
-        $config = config('log', 'sql');
+        $config = configDefault(false, 'log', 'sql');
         if (!$config) {
             return;
         }
 
         // 如果用时间少于下限,则不记录,注:DELETE不受时间限制
-        $limit = config('log', 'sql', 'limit') ?: 10;
+        $limit = configDefault(10, 'log', 'sql', 'limit');
         if ($op != 'DELETE' and $limit and $time < $limit) {
             return;
         }
@@ -270,6 +278,6 @@ final class FileLog
     public function writeLog(string $file, $msg, bool $raw = false): void
     {
         //是否允许记录开发人员日志
-        config('log', 'writeLog') ? $this->log($file, $msg, $raw) : null;
+        configDefault(false, 'log', 'writeLog') ? $this->log($file, $msg, $raw) : null;
     }
 }
