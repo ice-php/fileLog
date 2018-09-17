@@ -19,12 +19,10 @@ final class FileLog
     //禁止外部实例化
     private function __construct()
     {
-        try {
-            $this->isConfigDebug = Config::isDebug();
-        } catch (ConfigException $e) {
-            $this->isConfigDebug = true;
-        }
+        //是否配置为调试模式
+        $this->isConfigDebug = Config::isDebug();
 
+        //日志根目录
         $this->dirRoot = configDefault('./log/', 'log', 'dir_log');
     }
 
